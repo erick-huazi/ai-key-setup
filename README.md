@@ -1,262 +1,198 @@
-# 🔑 ai-key-setup
+# ai-key-setup
 
-**一键配置所有 AI 编程 CLI 工具的 API Key**
+安全配置 AI API Key，并以增量方式维护 Codex 自定义模型提供商。
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)](https://github.com/tashfeenahmed/ai-key-setup)
-[![Shell](https://img.shields.io/badge/shell-Bash-green)](https://www.gnu.org/software/bash/)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Tests](https://github.com/erick-huazi/ai-key-setup/actions/workflows/test.yml/badge.svg)](https://github.com/erick-huazi/ai-key-setup/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
 
-支持工具: **Codex CLI** · **Claude Code** · **Hermes Agent** · **OpenCode** · **Aider**
+## v2 解决的问题
 
----
+- Windows 可直接在 PowerShell 运行，不再依赖 Git Bash 或 WSL。
+- API Key 只保存到用户环境，不写入 `~/.codex/config.toml`。
+- 只更新 Codex 的 `model`、`model_provider` 和目标提供商段。
+- 保留原有插件、MCP、通知、项目授权和其他配置。
+- 修改前自动备份，支持一键回滚。
+- 支持模拟运行、TOML 校验、Codex 严格检查和模型接口验证。
+- 默认预设为 Hyaloria `kimi-k3`，也支持任意兼容 Codex Responses API 的中转站。
 
-## 🎯 解决什么问题？
+## Windows 快速开始
 
-每次安装新的 AI 编程工具，都要手动配置 API Key：
-- 找到配置文件位置
-- 记住环境变量名
-- 担心 `.env` 文件被提交到 Git
-- 不同工具的配置格式各不相同
+需要 Git 和 Python 3.11 或更高版本。从 PowerShell 执行：
 
-**`ai-key-setup` 一键解决所有问题！**
+```powershell
+git clone https://github.com/erick-huazi/ai-key-setup.git
+cd ai-key-setup
+Set-ExecutionPolicy -Scope Process Bypass
 
----
+# 先预览，不读取 Key，也不修改文件
+.\ai-key-setup.ps1 codex --dry-run
 
-## 🚀 快速开始
+# 配置 Hyaloria + kimi-k3，Key 输入时不可见
+.\ai-key-setup.ps1 codex
 
-### 30 秒上手（交互式）
-
-```bash
-# 下载脚本
-curl -fsSL https://raw.githubusercontent.com/tashfeenahmed/ai-key-setup/main/ai-key-setup.sh -o ai-key-setup.sh
-
-# 运行
-bash ai-key-setup.sh
+# 检查配置、环境变量和模型列表
+.\ai-key-setup.ps1 verify
 ```
 
-脚本会逐个提示你输入 API Key，自动完成所有配置。
+配置完成后，请完全退出并重新打开 Codex 或 VS Code，让新的用户环境变量进入应用进程。
 
-### 使用 .env 文件（推荐）
-
-```bash
-# 1. 下载模板
-curl -fsSL https://raw.githubusercontent.com/tashfeenahmed/ai-key-setup/main/.env.template -o .env
-
-# 2. 编辑 .env，填入你的 API Key
-nano .env  # 或用你喜欢的编辑器
-
-# 3. 一键配置
-bash ai-key-setup.sh -e .env
-```
-
-### 只配置特定工具
+## macOS / Linux 快速开始
 
 ```bash
-# 只配置 Codex 和 Claude Code
-bash ai-key-setup.sh -t codex,claude
-
-# 只配置 Hermes
-bash ai-key-setup.sh -t hermes
-```
-
-### 验证现有配置
-
-```bash
-bash ai-key-setup.sh -v
-```
-
----
-
-## ✨ 功能特性
-
-| 功能 | 说明 |
-|------|------|
-| 🔐 **安全输入** | API Key 输入时隐藏显示，不回显到终端 |
-| 💾 **.env 支持** | 从文件加载或保存到文件，权限自动设为 600 |
-| 🛠️ **多工具** | 一键配置 Codex, Claude Code, Hermes, OpenCode, Aider |
-| 🖥️ **多平台** | Windows (Git Bash/WSL), macOS, Linux |
-| ✅ **自动验证** | 配置完成后自动验证工具安装和配置状态 |
-| 📦 **自动备份** | 修改前自动备份原配置文件 |
-| 🎨 **智能默认** | 根据已有 Key 自动选择最佳模型提供商 |
-| 🔍 **模拟运行** | `--dry-run` 预览配置变更，不实际写入 |
-
----
-
-## 📋 各工具配置详情
-
-### Codex CLI
-
-- **配置文件**: `~/.codex/config.toml`
-- **支持提供商**: OpenAI, DeepSeek, Z.AI (GLM), Azure, Ollama
-- **智能检测**: 自动检测可用 Key 并设置默认提供商
-
-### Claude Code
-
-- **配置文件**: `~/.claude/settings.json`
-- **全局规则**: `~/.claude/CLAUDE.md`
-- **预配置权限**: git, npm, python 等常用命令
-
-### Hermes Agent
-
-- **配置文件**: `~/.hermes/config.yaml`
-- **智能模型选择**: 根据可用 Key 自动选择最佳模型
-
-### OpenCode
-
-- **配置文件**: `~/.config/opencode/config.json`
-
-### Aider
-
-- **配置文件**: `~/.aider/aider.conf.yml`
-- **自动检测默认模型**
-
----
-
-## 📖 完整命令参考
-
-```bash
-# 交互式配置（默认）
-bash ai-key-setup.sh
-
-# 从 .env 文件加载
-bash ai-key-setup.sh -e .env
-
-# 保存配置到 .env 文件
-bash ai-key-setup.sh -s .env
-
-# 只配置指定工具（逗号分隔）
-bash ai-key-setup.sh -t codex,claude,hermes
-
-# 模拟运行（不写入文件）
-bash ai-key-setup.sh --dry-run
-
-# 验证配置
-bash ai-key-setup.sh -v
-
-# 显示帮助
-bash ai-key-setup.sh -h
-
-# 组合使用
-bash ai-key-setup.sh -e .env -t codex,claude --dry-run
-```
-
----
-
-## 🔧 配置后操作
-
-配置完成后，执行以下命令使环境变量生效：
-
-```bash
-# Bash
-source ~/.bashrc
-
-# Zsh
-source ~/.zshrc
-
-# macOS Bash
-source ~/.bash_profile
-```
-
-然后验证各工具：
-
-```bash
-codex --version
-claude --version
-hermes --version
-aider --version
-```
-
----
-
-## 🔑 获取 API Key
-
-| 服务 | 获取地址 | 用途 |
-|------|----------|------|
-| **OpenAI** | https://platform.openai.com/api-keys | Codex CLI |
-| **Anthropic** | https://console.anthropic.com/ | Claude Code |
-| **Google Gemini** | https://aistudio.google.com/app/apikey | Gemini 模型 |
-| **DeepSeek** | https://platform.deepseek.com/api_keys | DeepSeek 模型 |
-| **Z.AI (GLM)** | https://open.bigmodel.cn/ | 智谱 GLM 模型 |
-| **GitHub** | https://github.com/settings/tokens | GitHub MCP 工具 |
-
----
-
-## 🛡️ 安全提示
-
-1. **永远不要**将 `.env` 文件提交到 Git 仓库
-2. 脚本会自动设置 `.env` 文件权限为 `600`（仅所有者可读写）
-3. 建议定期轮换 API Key
-4. 使用 `--dry-run` 先预览配置变更
-5. 配置文件修改前自动备份到 `*.backup.YYYYMMDD_HHMMSS`
-
----
-
-## 🐛 故障排除
-
-### 权限问题
-
-```bash
+git clone https://github.com/erick-huazi/ai-key-setup.git
+cd ai-key-setup
 chmod +x ai-key-setup.sh
+
+./ai-key-setup.sh codex --dry-run
+./ai-key-setup.sh codex
+./ai-key-setup.sh verify
 ```
 
-### 环境变量未生效
+脚本将密钥保存在 `~/.config/ai-key-setup/env`，权限设为 `600`，并在当前 Shell 配置中加入加载入口。配置完成后按终端提示重新加载。
 
-```bash
-# 检查是否写入成功
-cat ~/.bashrc | grep API_KEY
+## 默认配置
 
-# 手动加载
-source ~/.bashrc
+不带额外参数执行 `codex` 时使用：
+
+| 项目 | 默认值 |
+|---|---|
+| 提供商 ID | `hyaloria` |
+| API Base URL | `https://hyaloria.com/v1` |
+| 模型 | `kimi-k3` |
+| Key 环境变量 | `HYALORIA_API_KEY` |
+| Codex 接口 | `responses` |
+
+写入 Codex 的只是环境变量名称：
+
+```toml
+model = "kimi-k3"
+model_provider = "hyaloria"
+
+[model_providers.hyaloria]
+name = "Hyaloria"
+base_url = "https://hyaloria.com/v1"
+env_key = "HYALORIA_API_KEY"
+wire_api = "responses"
+requires_openai_auth = false
 ```
 
-### 工具未找到
+`env_key` 必须是变量名，例如 `HYALORIA_API_KEY`，绝不能填写以 `sk-` 开头的真实 Key。
 
-```bash
-# Codex CLI
-npm install -g @openai/codex
+## 配置其他提供商
 
-# Claude Code
-npm install -g @anthropic-ai/claude-code
+自定义中转站必须支持 Codex 使用的 OpenAI-compatible Responses API，通常是 `/v1/responses`，并建议提供 `/v1/models`：
 
-# Aider
-pip install aider-chat
+```powershell
+.\ai-key-setup.ps1 codex `
+  --provider-id my-gateway `
+  --provider-name "My Gateway" `
+  --base-url "https://api.example.com/v1" `
+  --model "your-model-id" `
+  --env-name "MY_GATEWAY_API_KEY"
 ```
 
-### Windows 用户
+使用 Codex 内置 OpenAI 提供商时，不会创建保留的 `[model_providers.openai]` 段：
 
-确保使用 **Git Bash** 或 **WSL** 运行脚本，PowerShell 和 CMD 不支持。
+```powershell
+.\ai-key-setup.ps1 codex --provider-id openai --model "your-openai-model" --env-name OPENAI_API_KEY
+```
 
----
+## 只设置环境变量
 
-## 🤝 贡献
+为 Claude Code、Hermes、Aider 或其他工具保存 Key，但不修改它们的配置文件：
 
-欢迎提交 Issue 和 Pull Request！
+```powershell
+.\ai-key-setup.ps1 set ANTHROPIC_API_KEY
+.\ai-key-setup.ps1 set OPENAI_API_KEY
+```
 
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feat/amazing-feature`)
-3. 提交更改 (`git commit -m 'feat: add amazing feature'`)
-4. 推送到分支 (`git push origin feat/amazing-feature`)
-5. 打开 Pull Request
+已有环境变量需要替换时添加 `--replace-key`。自动化环境可使用 `--key-from-env SOURCE_VARIABLE`，工具会从另一个已有环境变量读取，不接受把真实 Key 直接放进命令参数。
 
----
+## 常用命令
 
-## 📄 License
+| 命令 | 用途 |
+|---|---|
+| `codex --dry-run` | 只显示计划，不读取 Key、不写文件 |
+| `codex --no-key` | 只更新 Codex 配置，不设置 Key |
+| `codex --replace-key` | 替换已保存的 Key |
+| `codex --skip-network-check` | 不请求提供商的 `/models` 接口 |
+| `codex --scope process` | Key 仅在当前进程有效，适合测试 |
+| `verify` | 校验当前 Codex 配置、环境变量和模型接口 |
+| `rollback` | 恢复最近一次 Codex 配置备份 |
+| `--version` | 显示版本 |
 
-本项目采用 [MIT License](LICENSE)。
+完整参数：
 
----
+```powershell
+.\ai-key-setup.ps1 codex --help
+.\ai-key-setup.ps1 set --help
+.\ai-key-setup.ps1 verify --help
+```
 
-## ⭐ Star History
+## 备份与回滚
 
-如果这个项目对你有帮助，请给它一个 Star！
+Codex 配置默认位于：
 
-[![Star History Chart](https://api.star-history.com/svg?repos=tashfeenahmed/ai-key-setup&type=Date)](https://star-history.com/#tashfeenahmed/ai-key-setup&Date)
+- Windows：`%USERPROFILE%\.codex\config.toml`
+- macOS / Linux：`~/.codex/config.toml`
 
----
+原文件默认备份到 `~/.codex/backups/ai-key-setup/`。恢复最近备份：
 
-<div align="center">
+```powershell
+.\ai-key-setup.ps1 rollback
+```
 
-**Made with ❤️ for the AI coding community**
+恢复指定备份：
 
-</div>
+```powershell
+.\ai-key-setup.ps1 rollback --backup "C:\path\to\config.toml.TIMESTAMP.bak"
+```
+
+回滚只恢复 `config.toml`，不会删除或还原已经保存的用户环境变量。
+
+## 安全说明
+
+- 默认隐藏输入，不打印 API Key。
+- 输出和异常会主动遮盖疑似密钥。
+- `.env` 不会被程序自动读取；仓库中的 `.env.template` 仅是变量名参考。
+- Windows 用户环境变量保存在当前用户的注册表环境项中，当前 Windows 用户可以读取它。
+- 如果 Key 曾出现在聊天、截图、配置或 Git 历史中，请立即在服务商后台撤销并重新生成。
+- 不要把 Key 作为 `--env-name` 的值，也不要把真实 Key 写进命令行或提交到 Git。
+
+## 故障排除
+
+### Missing environment variable: `sk-...`
+
+这表示 Codex 配置里的 `env_key` 被错误填成了真实 Key。重新运行：
+
+```powershell
+.\ai-key-setup.ps1 codex
+```
+
+脚本会将该字段修复为 `HYALORIA_API_KEY`，同时保留其他 Codex 配置。随后重启 Codex。
+
+### PowerShell 禁止运行脚本
+
+仅对当前窗口临时放行，不需要管理员权限：
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+```
+
+### API Key 有效但找不到模型
+
+先向中转站确认实际模型 ID。若服务可调用但没有实现 `/models`，配置时添加 `--skip-network-check`，再在 Codex 中做一次真实对话测试。
+
+## 开发与测试
+
+项目只使用 Python 标准库：
+
+```powershell
+python -m unittest discover -s tests -v
+python -m py_compile ai_key_setup.py
+```
+
+## License
+
+[MIT License](LICENSE)
