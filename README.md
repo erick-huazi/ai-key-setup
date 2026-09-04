@@ -1,69 +1,81 @@
 # ai-key-setup
 
-安全配置 AI API Key，并以增量方式维护 Codex 自定义模型提供商。
+安全保存 AI API Key，并以事务方式维护 Codex 自定义模型提供商。
 
 [![Tests](https://github.com/erick-huazi/ai-key-setup/actions/workflows/test.yml/badge.svg)](https://github.com/erick-huazi/ai-key-setup/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
 
-## v2 解决的问题
+## v3 核心能力
 
-- Windows 可直接在 PowerShell 运行，不再依赖 Git Bash 或 WSL。
-- API Key 只保存到用户环境，不写入 `~/.codex/config.toml`。
-- 只更新 Codex 的 `model`、`model_provider` 和目标提供商段。
-- 保留原有插件、MCP、通知、项目授权和其他配置。
-- 修改前自动备份，支持一键回滚。
-- 支持模拟运行、TOML 校验、Codex 严格检查和模型接口验证。
-- 默认预设为 Hyaloria `kimi-k3`，也支持任意兼容 Codex Responses API 的中转站。
+- Key 只进入环境存储，Codex 配置只记录环境变量名。
+- 仅更新 `model`、`model_provider` 和目标提供商的托管字段。
+- 保留插件、MCP、通知、项目授权，以及目标提供商的重试、请求头等扩展项。
+- 联网预检、Codex 严格检查、持久化任一步失败，自动恢复原配置。
+- 写入前检查并发修改，避免覆盖刚被用户或其他程序改过的配置。
+- 阻止携带 Key 的跨域重定向，并限制验证接口响应体大小。
+- 支持 `/models` 免费检查和 `/responses` 真实兼容性检查。
+- 支持审计、删除环境变量、列出备份与精确回滚。
+- Windows、macOS、Linux 共用同一套 Python 核心逻辑。
 
-## Windows 快速开始
+实现依据是 OpenAI 官方的 [Codex 配置参考](https://developers.openai.com/codex/config-reference/) 和 [Codex 认证说明](https://developers.openai.com/codex/auth/)。自定义提供商必须写在用户级配置中，`env_key` 的值必须是环境变量名称；`wire_api` 当前仅支持 `responses`。
 
-需要 Git 和 Python 3.11 或更高版本。从 PowerShell 执行：
+## 安装
+
+需要 Python 3.11 或更高版本。
+
+### 克隆后运行
+
+Windows PowerShell：
 
 ```powershell
 git clone https://github.com/erick-huazi/ai-key-setup.git
 cd ai-key-setup
 Set-ExecutionPolicy -Scope Process Bypass
-
-# 先预览，不读取 Key，也不修改文件
-.\ai-key-setup.ps1 codex --dry-run
-
-# 配置 Hyaloria + kimi-k3，Key 输入时不可见
-.\ai-key-setup.ps1 codex
-
-# 检查配置、环境变量和模型列表
-.\ai-key-setup.ps1 verify
+.\ai-key-setup.ps1 --version
 ```
 
-配置完成后，请完全退出并重新打开 Codex 或 VS Code，让新的用户环境变量进入应用进程。
-
-## macOS / Linux 快速开始
+macOS / Linux：
 
 ```bash
 git clone https://github.com/erick-huazi/ai-key-setup.git
 cd ai-key-setup
 chmod +x ai-key-setup.sh
-
-./ai-key-setup.sh codex --dry-run
-./ai-key-setup.sh codex
-./ai-key-setup.sh verify
+./ai-key-setup.sh --version
 ```
 
-脚本将密钥保存在 `~/.config/ai-key-setup/env`，权限设为 `600`，并在当前 Shell 配置中加入加载入口。配置完成后按终端提示重新加载。
+macOS / Linux 的用户范围会写入受限权限的 Shell 环境文件，适用于随后从该终端启动的 Codex CLI。由桌面图标直接启动的 GUI 应用不一定继承 Shell 环境，请按对应系统的应用环境配置处理。
 
-## 默认配置
+### 安装为系统命令
 
-不带额外参数执行 `codex` 时使用：
+```bash
+python -m pip install "git+https://github.com/erick-huazi/ai-key-setup.git"
+ai-key-setup --version
+```
 
-| 项目 | 默认值 |
-|---|---|
-| 提供商 ID | `hyaloria` |
-| API Base URL | `https://hyaloria.com/v1` |
-| 模型 | `kimi-k3` |
-| Key 环境变量 | `HYALORIA_API_KEY` |
-| Codex 接口 | `responses` |
+也可以使用 `pipx install git+https://github.com/erick-huazi/ai-key-setup.git` 创建隔离安装。
 
-写入 Codex 的只是环境变量名称：
+## 快速开始
+
+默认预设是 Hyaloria、`kimi-k3` 和 `HYALORIA_API_KEY`。
+
+```powershell
+# 只预览，不读取 Key、不联网、不写文件
+.\ai-key-setup.ps1 --dry-run
+
+# 交互式隐藏输入 Key，并完成配置
+.\ai-key-setup.ps1
+
+# 综合检查当前配置
+.\ai-key-setup.ps1 verify
+
+# 检查是否存在明文凭据、认证冲突或缺失变量
+.\ai-key-setup.ps1 audit
+```
+
+配置完成后，完全退出并重新打开 Codex 或 VS Code，使新的用户环境变量进入应用进程。
+
+## 默认写入内容
 
 ```toml
 model = "kimi-k3"
@@ -77,11 +89,11 @@ wire_api = "responses"
 requires_openai_auth = false
 ```
 
-`env_key` 必须是变量名，例如 `HYALORIA_API_KEY`，绝不能填写以 `sk-` 开头的真实 Key。
+配置中不会出现真实 Key。`env_key` 必须类似 `HYALORIA_API_KEY`，不能填写 `sk-...`。
 
 ## 配置其他提供商
 
-自定义中转站必须支持 Codex 使用的 OpenAI-compatible Responses API，通常是 `/v1/responses`，并建议提供 `/v1/models`：
+提供商必须兼容 OpenAI Responses API：
 
 ```powershell
 .\ai-key-setup.ps1 codex `
@@ -92,105 +104,129 @@ requires_openai_auth = false
   --env-name "MY_GATEWAY_API_KEY"
 ```
 
-使用 Codex 内置 OpenAI 提供商时，不会创建保留的 `[model_providers.openai]` 段：
+`base-url` 应填写 API 根路径，通常以 `/v1` 结尾，不要包含 `/models` 或 `/responses`。远程地址默认必须使用 HTTPS；本机 `localhost` 可以使用 HTTP。
+
+如果目标提供商已配置 Codex 的命令认证 `[model_providers.<id>.auth]`，工具默认停止，防止破坏已有认证。确认改成环境变量认证时添加：
 
 ```powershell
-.\ai-key-setup.ps1 codex --provider-id openai --model "your-openai-model" --env-name OPENAI_API_KEY
+.\ai-key-setup.ps1 codex --replace-auth
 ```
 
-## 只设置环境变量
+若目标提供商的 `http_headers` 中存在静态 `Authorization`、`X-API-Key` 等认证头，工具会停止并要求先撤销、轮换并迁移到 `env_key` 或 `env_http_headers`，不会把明文凭据原样带入新配置。
 
-为 Claude Code、Hermes、Aider 或其他工具保存 Key，但不修改它们的配置文件：
+## 验证模式
+
+| 模式 | 行为 | 是否产生模型费用 |
+|---|---|---|
+| `models` | 请求 `/models` 并精确检查模型 ID，默认模式 | 通常不会 |
+| `responses` | 向 `/responses` 发起一次最小真实调用 | 会产生极小费用 |
+| `both` | 依次执行以上两项 | 会产生极小费用 |
+| `none` | 完全不访问提供商 | 不会 |
+
+示例：
 
 ```powershell
-.\ai-key-setup.ps1 set ANTHROPIC_API_KEY
-.\ai-key-setup.ps1 set OPENAI_API_KEY
+.\ai-key-setup.ps1 verify --verify-mode responses
+.\ai-key-setup.ps1 codex --verify-mode both
+.\ai-key-setup.ps1 codex --verify-mode none
 ```
 
-已有环境变量需要替换时添加 `--replace-key`。自动化环境可使用 `--key-from-env SOURCE_VARIABLE`，工具会从另一个已有环境变量读取，不接受把真实 Key 直接放进命令参数。
+旧参数 `--skip-network-check` 仍可使用，等同于 `--verify-mode none`。
 
-## 常用命令
+## 命令
 
 | 命令 | 用途 |
 |---|---|
-| `codex --dry-run` | 只显示计划，不读取 Key、不写文件 |
-| `codex --no-key` | 只更新 Codex 配置，不设置 Key |
-| `codex --replace-key` | 替换已保存的 Key |
-| `codex --skip-network-check` | 不请求提供商的 `/models` 接口 |
-| `codex --scope process` | Key 仅在当前进程有效，适合测试 |
-| `verify` | 校验当前 Codex 配置、环境变量和模型接口 |
-| `rollback` | 恢复最近一次 Codex 配置备份 |
-| `--version` | 显示版本 |
+| `codex` | 配置 Codex；省略子命令时默认执行 |
+| `set ENV_NAME` | 只安全保存一个环境变量 |
+| `unset ENV_NAME` | 删除一个环境变量 |
+| `verify` | 检查配置、环境变量、Codex 和提供商接口 |
+| `audit` | 审计明文凭据、认证冲突和缺失变量 |
+| `backups` | 列出最近的配置备份 |
+| `rollback` | 恢复最近或指定的配置备份 |
 
-完整参数：
+常用选项：
 
 ```powershell
-.\ai-key-setup.ps1 codex --help
-.\ai-key-setup.ps1 set --help
-.\ai-key-setup.ps1 verify --help
+.\ai-key-setup.ps1 codex --dry-run
+.\ai-key-setup.ps1 codex --no-key --verify-mode none
+.\ai-key-setup.ps1 codex --replace-key
+.\ai-key-setup.ps1 codex --key-from-env SOURCE_VARIABLE
+.\ai-key-setup.ps1 codex --skip-codex-check
+.\ai-key-setup.ps1 backups --limit 20
 ```
 
-## 备份与回滚
+工具不接受把真实 Key 直接放进命令参数。自动化时先把 Key 放进已有环境变量，再使用 `--key-from-env`。
 
-Codex 配置默认位于：
+## 事务、备份与回滚
+
+配置默认位于：
 
 - Windows：`%USERPROFILE%\.codex\config.toml`
 - macOS / Linux：`~/.codex/config.toml`
 
-原文件默认备份到 `~/.codex/backups/ai-key-setup/`。恢复最近备份：
+每次实际改写前，原文件会备份到 `~/.codex/backups/ai-key-setup/`。新候选配置写入后必须通过本机 Codex 严格检查，环境变量才会持久化；后续失败时恢复修改前的原始字节，包括 UTF-8 BOM。
 
 ```powershell
+# 查看备份
+.\ai-key-setup.ps1 backups
+
+# 恢复最近备份
 .\ai-key-setup.ps1 rollback
-```
 
-恢复指定备份：
-
-```powershell
+# 恢复指定备份
 .\ai-key-setup.ps1 rollback --backup "C:\path\to\config.toml.TIMESTAMP.bak"
 ```
 
-回滚只恢复 `config.toml`，不会删除或还原已经保存的用户环境变量。
+回滚只恢复 `config.toml`，不会改动环境变量。
 
-## 安全说明
+## 密钥存储边界
 
-- 默认隐藏输入，不打印 API Key。
-- 输出和异常会主动遮盖疑似密钥。
-- `.env` 不会被程序自动读取；仓库中的 `.env.template` 仅是变量名参考。
-- Windows 用户环境变量保存在当前用户的注册表环境项中，当前 Windows 用户可以读取它。
-- 如果 Key 曾出现在聊天、截图、配置或 Git 历史中，请立即在服务商后台撤销并重新生成。
-- 不要把 Key 作为 `--env-name` 的值，也不要把真实 Key 写进命令行或提交到 Git。
+- Windows 用户范围：当前用户注册表的 `Environment` 项。
+- macOS / Linux 用户范围：`~/.config/ai-key-setup/env`，权限为 `600`，Bash、Zsh、sh、Dash、Ksh 的配置只加入加载入口；其他 Shell 会明确停止并提示手动设置。
+- `--scope process`：仅供本次工具进程验证；进程退出后，后来启动的 Codex 不会继承该 Key。
+- 备份是原配置的精确副本。如果旧配置本来含有明文 Key，备份也会保留它；修复后应轮换 Key，并妥善清理旧备份。
+
+环境变量不是硬件保险箱，同一系统用户下的程序通常可以读取。若需要 OpenAI 官方登录凭据，Codex 支持系统凭据存储；本工具主要解决第三方 Responses 兼容提供商的 `env_key` 配置。
 
 ## 故障排除
 
-### Missing environment variable: `sk-...`
+### `Missing environment variable: sk-...`
 
-这表示 Codex 配置里的 `env_key` 被错误填成了真实 Key。重新运行：
+这表示 `env_key` 被误填成了真实 Key。先轮换已经暴露的 Key，再运行：
 
 ```powershell
-.\ai-key-setup.ps1 codex
+.\ai-key-setup.ps1 audit
+.\ai-key-setup.ps1 codex --replace-key
 ```
 
-脚本会将该字段修复为 `HYALORIA_API_KEY`，同时保留其他 Codex 配置。随后重启 Codex。
+### Key 有效但 `/models` 不可用
 
-### PowerShell 禁止运行脚本
+有些中转站只实现 `/responses`。可以改用：
 
-仅对当前窗口临时放行，不需要管理员权限：
+```powershell
+.\ai-key-setup.ps1 verify --verify-mode responses
+```
+
+该模式会产生一次极小的真实模型调用费用。
+
+### PowerShell 禁止脚本运行
+
+仅对当前窗口临时放行：
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
 ```
 
-### API Key 有效但找不到模型
-
-先向中转站确认实际模型 ID。若服务可调用但没有实现 `/models`，配置时添加 `--skip-network-check`，再在 Codex 中做一次真实对话测试。
-
 ## 开发与测试
 
-项目只使用 Python 标准库：
+项目运行时只使用 Python 标准库：
 
 ```powershell
-python -m unittest discover -s tests -v
 python -m py_compile ai_key_setup.py
+python -m unittest discover -s tests -v
+python -m pip install --no-deps -e .
+ai-key-setup --version
 ```
 
 ## License
